@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playschool Profit Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --teal: #0d9e74;
+    --teal-dark: #076e50;
+    --teal-light: #e0f7ee;
+    --teal-mid: #1db87f;
+    --red: #e53e3e;
+    --red-light: #fff5f5;
+    --amber: #d97706;
+    --amber-light: #fffbeb;
+    --blue: #2563eb;
+    --blue-light: #eff6ff;
+    --ink: #0f1a14;
+    --ink-soft: #2d3f35;
+    --muted: #6b7c74;
+    --border: #dce8e2;
+    --surface: #f5faf7;
+    --white: #ffffff;
+    --card-shadow: 0 1px 3px rgba(13,158,116,0.08), 0 4px 16px rgba(13,158,116,0.06);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: #f0f7f4;
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--ink);
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 2px solid var(--teal);
+  }
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-dot {
+    width: 10px; height: 10px;
+    background: var(--teal-mid);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.3)} }
+  .logo-text { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: .04em; }
+  .logo-sub { font-size: 11px; color: #6b8a7a; margin-left: 4px; font-weight: 300; }
+  .header-badge {
+    font-size: 11px; font-weight: 500;
+    background: rgba(13,158,116,0.2);
+    color: var(--teal-mid);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(13,158,116,0.3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--ink);
+    padding: 3rem 2rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(13,158,116,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-inner { max-width: 1200px; margin: 0 auto; }
+  .hero-tag {
+    font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--teal-mid); margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 700; color: #fff; line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .hero h1 span { color: var(--teal-mid); }
+  .hero p { font-size: 15px; color: #8aa89e; font-weight: 300; max-width: 600px; line-height: 1.7; }
+  .hero-stats {
+    display: flex; gap: 2rem; margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+  .hero-stat { }
+  .hero-stat .val { font-size: 24px; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace; }
+  .hero-stat .val.neg { color: #fc8181; }
+  .hero-stat .lbl { font-size: 11px; color: #6b8a7a; margin-top: 2px; letter-spacing: .05em; }
+
+  /* ── MAIN LAYOUT ── */
+  .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 1.5rem;
+    width: fit-content;
+    box-shadow: var(--card-shadow);
+  }
+  .tab {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px; font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .tab.active {
+    background: var(--teal);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(13,158,116,0.35);
+  }
+  .tab:hover:not(.active) { background: var(--surface); color: var(--ink); }
+
+  /* ── PANELS ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) { .grid-4 { grid-template-columns: repeat(2,1fr); } .grid-3 { grid-template-columns: repeat(2,1fr); } }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+  }
+  .card-title {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    display: block; width: 3px; height: 14px;
+    background: var(--teal); border-radius: 2px;
+  }
+
+  /* ── METRIC CARDS ── */
+  .metric-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: var(--teal);
+    transform: scaleX(0); transition: transform .3s;
+    transform-origin: left;
+  }
+  .metric-card:hover::after { transform: scaleX(1); }
+  .metric-val {
+    font-size: 26px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink); line-height: 1;
+  }
+  .metric-val.green { color: var(--teal-dark); }
+  .metric-val.red { color: var(--red); }
+  .metric-val.amber { color: var(--amber); }
+  .metric-lbl { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .metric-change {
+    font-size: 11px; font-weight: 500; margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .metric-change.up { color: var(--teal); }
+  .metric-change.down { color: var(--red); }
+
+  /* ── SLIDERS ── */
+  .slider-group { margin-bottom: 1rem; }
+  .slider-row {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .slider-label {
+    font-size: 12px; color: var(--muted); width: 155px; flex-shrink: 0;
+    font-weight: 400;
+  }
+  .slider-value {
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    min-width: 85px; text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  input[type="range"] {
+    flex: 1; height: 4px; border-radius: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: linear-gradient(to right, var(--teal) 0%, var(--teal) var(--pct, 50%), var(--border) var(--pct, 50%), var(--border) 100%);
+    outline: none; cursor: pointer;
+    transition: background .1s;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px;
+    background: var(--teal); border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(13,158,116,0.2);
+    transition: box-shadow .2s, transform .2s;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 6px rgba(13,158,116,0.2);
+    transform: scale(1.1);
+  }
+  .section-divider {
+    height: 1px; background: var(--border);
+    margin: 1.25rem 0;
+  }
+  .section-sub { font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--teal); margin: 1rem 0 .6rem; }
+
+  /* ── P&L TABLE ── */
+  .pl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pl-table tr { border-bottom: 1px solid var(--border); }
+  .pl-table tr:last-child { border-bottom: none; }
+  .pl-table td { padding: 8px 6px; }
+  .pl-table td:last-child { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; }
+  .pl-table .section-row td { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding-top: 14px; border-bottom: none; background: none; }
+  .pl-table .total-row { border-top: 2px solid var(--border) !important; background: var(--surface); }
+  .pl-table .total-row td { font-weight: 600; font-size: 14px; padding: 10px 6px; }
+  .pl-table .profit-row td { font-size: 15px; font-weight: 700; }
+
+  /* ── INSIGHT BOX ── */
+  .insight {
+    border-radius: 10px; padding: 12px 16px;
+    font-size: 13px; line-height: 1.6;
+    margin-top: 1rem; font-weight: 400;
+    border-left: 3px solid;
+  }
+  .insight.green { background: #e8faf3; border-color: var(--teal); color: var(--teal-dark); }
+  .insight.amber { background: var(--amber-light); border-color: var(--amber); color: #92400e; }
+  .insight.red { background: var(--red-light); border-color: var(--red); color: #9b1c1c; }
+  .insight.blue { background: var(--blue-light); border-color: var(--blue); color: #1e40af; }
+
+  /* ── PHASE CARDS ── */
+  .phase-section { margin-bottom: 2rem; }
+  .phase-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; margin-bottom: 1rem;
+  }
+  .phase-badge.p1 { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
+  .phase-badge.p2 { background: var(--amber-light); color: #78350f; border: 1px solid #fde68a; }
+  .phase-badge.p3 { background: var(--teal-light); color: var(--teal-dark); border: 1px solid #6ee7b7; }
+  .action-card {
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 1rem 1.25rem; margin-bottom: .75rem;
+    background: var(--white); display: flex; gap: 14px;
+    align-items: flex-start;
+    transition: box-shadow .2s, transform .2s;
+  }
+  .action-card:hover { box-shadow: 0 4px 20px rgba(13,158,116,0.12); transform: translateY(-1px); }
+  .action-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+  }
+  .action-num.p1 { background: #fff1f2; color: #9f1239; }
+  .action-num.p2 { background: var(--amber-light); color: #78350f; }
+  .action-num.p3 { background: var(--teal-light); color: var(--teal-dark); }
+  .action-body { flex: 1; }
+  .action-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+  .action-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 6px; }
+  .action-impact {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    background: var(--teal-light); color: var(--teal-dark);
+    padding: 3px 10px; border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── PROGRESS BARS ── */
+  .progress-wrap { margin: 4px 0 10px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .progress-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+
+  /* ── CHART WRAPPER ── */
+  .chart-wrapper { position: relative; width: 100%; height: 220px; margin: 1rem 0 .5rem; }
+
+  /* ── SCENARIO COMPARE ── */
+  .scenario-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .scenario-card {
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.25rem; background: var(--white);
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .scenario-card.highlight { border-color: var(--teal); border-width: 2px; }
+  .scenario-card.highlight::before {
+    content: 'TARGET';
+    position: absolute; top: 0; right: 0;
+    font-size: 9px; font-weight: 700; letter-spacing: .1em;
+    background: var(--teal); color: white;
+    padding: 3px 10px; border-radius: 0 10px 0 8px;
+  }
+  .sc-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .5rem; }
+  .sc-revenue { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--ink); }
+  .sc-profit { font-size: 14px; font-weight: 600; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  .sc-margin { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* ── NETWORK SUMMARY ── */
+  .network-bar {
+    background: var(--ink); border-radius: 16px;
+    padding: 1.5rem; color: #fff; margin-top: 1.5rem;
+    display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;
+    justify-content: space-between;
+  }
+  .nb-item .val { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .nb-item .val.g { color: var(--teal-mid); }
+  .nb-item .val.r { color: #fc8181; }
+  .nb-item .lbl { font-size: 11px; color: #6b8a7a; margin-top: 3px; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--ink); color: #4a6358;
+    text-align: center; padding: 1.5rem;
+    font-size: 12px; margin-top: 3rem;
+    border-top: 1px solid #1a2e24;
+  }
+  footer span { color: var(--teal-mid); }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <span class="logo-text">PlaySchool Profit Simulator<span class="logo-sub">by your business consultant</span></span>
+    </div>
+    <div class="header-badge">v1.0 · 2025</div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">Interactive Business Diagnostic</div>
+    <h1>Your <span>profit potential</span>,<br>mapped in real time</h1>
+    <p>Adjust the sliders to model different scenarios — see instantly how occupancy, pricing, and after-hours revenue change your P&L across your entire network.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="val" id="h-branches">8</div><div class="lbl">Branches</div></div>
+      <div class="hero-stat"><div class="val neg" id="h-current-profit">-₹96K</div><div class="lbl">Current annual profit</div></div>
+      <div class="hero-stat"><div class="val" id="h-potential">₹1.12 Cr</div><div class="lbl">Target annual profit</div></div>
+      <div class="hero-stat"><div class="val" id="h-gap">₹1.2 Cr</div><div class="lbl">Annual value gap</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('simulator')">Branch Simulator</button>
+    <button class="tab" onclick="switchTab('pl')">Full P&L</button>
+    <button class="tab" onclick="switchTab('scenarios')">Scenarios</button>
+    <button class="tab" onclick="switchTab('roadmap')">Action Roadmap</button>
+  </div>
+
+  <!-- ══════════ TAB 1: SIMULATOR ══════════ -->
+  <div id="tab-simulator" class="panel active">
+    <div class="grid-2" style="margin-bottom:1.5rem">
+      <!-- Revenue Inputs -->
+      <div class="card">
+        <div class="card-title">Revenue inputs</div>
+        <div class="section-sub">Core school</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <span class="slider-label">Students enrolled</span>
+            <input type="range" id="s-students" min="10" max="60" value="27" step="1" oninput="calc()">
+            <span class="slider-value" id="o-students">27</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Monthly fee (₹)</span>
+            <input type="range" id="s-fee" min="1500" max="6000" value="3000" step="100" oninput="calc()">
+            <span class="slider-value" id="o-fee">₹3,000</span>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="section-sub">After-hours daycare</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <span class="slider-label">Daycare children</span>
+            <input type="range" id="s-dckids" min="0" max="25" value="0" step="1" oninput="calc()">
+            <span class="slider-value" id="o-dckids">0</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Daycare fee / child</span>
+            <input type="range" id="s-dcfee" min="500" max="3000" value="1500" step="100" oninput="calc()">
+            <span class="slider-value" id="o-dcfee">₹1,500</span>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="section-sub">Weekend / hobby classes</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <span class="slider-label">Weekend class children</span>
+            <input type="range" id="s-wkkids" min="0" max="25" value="0" step="1" oninput="calc()">
+            <span class="slider-value" id="o-wkkids">0</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Weekend fee / child</span>
+            <input type="range" id="s-wkfee" min="500" max="1500" value="800" step="100" oninput="calc()">
+            <span class="slider-value" id="o-wkfee">₹800</span>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="section-sub">Number of branches</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <span class="slider-label">Branches in network</span>
+            <input type="range" id="s-branches" min="1" max="15" value="8" step="1" oninput="calc()">
+            <span class="slider-value" id="o-branches">8</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expense Inputs -->
+      <div class="card">
+        <div class="card-title">Expense inputs</div>
+        <div class="section-sub">Fixed costs</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <span class="slider-label">Rent / month</span>
+            <input type="range" id="s-rent" min="5000" max="80000" value="30000" step="1000" oninput="calc()">
+            <span class="slider-value" id="o-rent">₹30,000</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Staff salaries</span>
+            <input type="range" id="s-salary" min="15000" max="100000" value="45000" step="1000" oninput="calc()">
+            <span class="slider-value" id="o-salary">₹45,000</span>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="section-sub">Variable costs</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <span class="slider-label">Utilities</span>
+            <input type="range" id="s-util" min="1000" max="10000" value="3000" step="500" oninput="calc()">
+            <span class="slider-value" id="o-util">₹3,000</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Supplies & materials</span>
+            <input type="range" id="s-supplies" min="500" max="8000" value="2000" step="500" oninput="calc()">
+            <span class="slider-value" id="o-supplies">₹2,000</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Marketing spend</span>
+            <input type="range" id="s-mkt" min="0" max="15000" value="0" step="500" oninput="calc()">
+            <span class="slider-value" id="o-mkt">₹0</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Misc / admin</span>
+            <input type="range" id="s-misc" min="0" max="10000" value="2000" step="500" oninput="calc()">
+            <span class="slider-value" id="o-misc">₹2,000</span>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="section-sub">Revenue breakdown — this branch</div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span>School fees</span><span id="pb-school-val">₹81,000</span></div>
+          <div class="progress-track"><div class="progress-fill" id="pb-school" style="background:var(--teal);width:100%"></div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span>Daycare</span><span id="pb-dc-val">₹0</span></div>
+          <div class="progress-track"><div class="progress-fill" id="pb-dc" style="background:#2563eb;width:0%"></div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span>Weekend classes</span><span id="pb-wk-val">₹0</span></div>
+          <div class="progress-track"><div class="progress-fill" id="pb-wk" style="background:#d97706;width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="grid-4">
+      <div class="metric-card">
+        <div class="metric-val green" id="m-rev">₹81,000</div>
+        <div class="metric-lbl">Monthly revenue</div>
+        <div class="metric-change" id="m-rev-chg"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val red" id="m-exp">₹82,000</div>
+        <div class="metric-lbl">Monthly expenses</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val red" id="m-profit">-₹1,000</div>
+        <div class="metric-lbl">Net profit / loss</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val red" id="m-margin">-1.2%</div>
+        <div class="metric-lbl">Profit margin</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Revenue vs expenses vs profit — this branch</div>
+      <div class="chart-wrapper">
+        <canvas id="simChart"></canvas>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#0d9e74"></div>Revenue</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e53e3e"></div>Expenses</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>Net profit</div>
+      </div>
+    </div>
+
+    <!-- Insight + network -->
+    <div id="insight-box" class="insight amber">
+      Adjust the sliders above to model your branch. Currently near break-even — activate daycare and weekend classes to unlock immediate profit.
+    </div>
+
+    <div class="network-bar">
+      <div class="nb-item"><div class="val g" id="nb-rev">₹6.5L</div><div class="lbl">Network revenue / month</div></div>
+      <div class="nb-item"><div class="val r" id="nb-profit">-₹8,000</div><div class="lbl">Network profit / month</div></div>
+      <div class="nb-item"><div class="val r" id="nb-annual">-₹96,000</div><div class="lbl">Network profit / year</div></div>
+      <div class="nb-item"><div class="val" id="nb-be">28 students</div><div class="lbl">Break-even per branch</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB 2: P&L ══════════ -->
+  <div id="tab-pl" class="panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Full monthly P&L — per branch</div>
+        <table class="pl-table">
+          <tr class="section-row"><td colspan="2">Revenue</td></tr>
+          <tr><td>School tuition fees</td><td id="pl-school" style="color:var(--teal-dark)">₹81,000</td></tr>
+          <tr><td>Extended daycare</td><td id="pl-dc" style="color:var(--teal-dark)">₹0</td></tr>
+          <tr><td>Weekend / hobby classes</td><td id="pl-wk" style="color:var(--teal-dark)">₹0</td></tr>
+          <tr class="total-row"><td>Gross revenue</td><td id="pl-gross" style="color:var(--teal-dark)">₹81,000</td></tr>
+          <tr class="section-row"><td colspan="2">Fixed expenses</td></tr>
+          <tr><td>Rent & premises</td><td id="pl-rent" style="color:var(--red)">-₹30,000</td></tr>
+          <tr><td>Staff salaries</td><td id="pl-salary" style="color:var(--red)">-₹45,000</td></tr>
+          <tr class="section-row"><td colspan="2">Variable expenses</td></tr>
+          <tr><td>Utilities</td><td id="pl-util" style="color:var(--red)">-₹3,000</td></tr>
+          <tr><td>Supplies & materials</td><td id="pl-supplies" style="color:var(--red)">-₹2,000</td></tr>
+          <tr><td>Marketing</td><td id="pl-mkt" style="color:var(--red)">-₹0</td></tr>
+          <tr><td>Misc / admin</td><td id="pl-misc" style="color:var(--red)">-₹2,000</td></tr>
+          <tr class="total-row"><td>Total expenses</td><td id="pl-exp" style="color:var(--red)">-₹82,000</td></tr>
+          <tr class="total-row profit-row"><td>Net profit / (loss)</td><td id="pl-net">-₹1,000</td></tr>
+          <tr><td style="color:var(--muted)">Profit margin</td><td id="pl-marg">-1.2%</td></tr>
+          <tr><td style="color:var(--muted)">Break-even (students)</td><td id="pl-be">28</td></tr>
+          <tr><td style="color:var(--muted)">Cost per student</td><td id="pl-cps">₹3,037</td></tr>
+        </table>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:1.5rem">
+          <div class="card-title">Annual view</div>
+          <table class="pl-table">
+            <tr><td style="color:var(--muted)">Annual revenue (this branch)</td><td id="pl-ann-rev" style="color:var(--teal-dark)">₹9,72,000</td></tr>
+            <tr><td style="color:var(--muted)">Annual profit (this branch)</td><td id="pl-ann-p">-₹12,000</td></tr>
+            <tr class="total-row"><td>Network annual revenue</td><td id="pl-net-rev" style="color:var(--teal-dark)">₹77,76,000</td></tr>
+            <tr class="total-row profit-row"><td>Network annual profit</td><td id="pl-net-p">-₹96,000</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">What needs to change to hit ₹30K profit</div>
+          <table class="pl-table">
+            <tr><td style="color:var(--muted)">Students needed (at current fee)</td><td id="pl-need-s" style="color:var(--amber)">38</td></tr>
+            <tr><td style="color:var(--muted)">Fee needed (at current enrollment)</td><td id="pl-need-f" style="color:var(--amber)">₹4,111</td></tr>
+            <tr><td style="color:var(--muted)">Daycare kids needed (at ₹1,500)</td><td id="pl-need-d" style="color:var(--amber)">21</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB 3: SCENARIOS ══════════ -->
+  <div id="tab-scenarios" class="panel">
+    <div class="scenario-grid">
+      <div class="scenario-card">
+        <div class="sc-label">Current state</div>
+        <div class="sc-revenue">₹81,000</div>
+        <div class="sc-profit" style="color:var(--red)">-₹1,000</div>
+        <div class="sc-margin">Margin: -1.2%</div>
+      </div>
+      <div class="scenario-card">
+        <div class="sc-label">Conservative (90 days)</div>
+        <div class="sc-revenue">₹1,33,400</div>
+        <div class="sc-profit" style="color:var(--amber)">+₹52,400</div>
+        <div class="sc-margin">Margin: 39.3%</div>
+      </div>
+      <div class="scenario-card highlight">
+        <div class="sc-label">Target (6 months)</div>
+        <div class="sc-revenue">₹1,96,500</div>
+        <div class="sc-profit" style="color:var(--teal-dark)">+₹1,17,000</div>
+        <div class="sc-margin">Margin: 59.5%</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Revenue journey — per branch (monthly)</div>
+      <div class="chart-wrapper" style="height:260px">
+        <canvas id="scenChart"></canvas>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#0d9e74"></div>Tuition</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>Daycare</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div>Weekend classes</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#9333ea"></div>Net profit</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Network-wide impact — 8 branches</div>
+      <div class="chart-wrapper" style="height:240px">
+        <canvas id="networkChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB 4: ROADMAP ══════════ -->
+  <div id="tab-roadmap" class="panel">
+
+    <div class="phase-section">
+      <div class="phase-badge p1">Phase 1 — Days 1 to 30 — Stop the bleeding. Generate cash now.</div>
+      <div class="action-card">
+        <div class="action-num p1">1</div>
+        <div class="action-body">
+          <div class="action-title">Launch paid afternoon daycare immediately</div>
+          <div class="action-desc">Announce extended care 12–5pm to all current parents via WhatsApp this week. Price at ₹1,500/month per child. Your staff is already present. Your space is already paid for. This is pure margin — zero additional fixed cost required.</div>
+          <span class="action-impact">+₹22,500–37,500 / branch / month</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-num p1">2</div>
+        <div class="action-body">
+          <div class="action-title">Activate a structured parent referral program</div>
+          <div class="action-desc">Offer existing parents a ₹500–1,000 fee discount for every confirmed new admission they refer. Print referral cards. Brief every staff member to mention it weekly. You have 27 parents per branch — that is 27 potential salespeople who already trust you.</div>
+          <span class="action-impact">Each new student = ₹3,000/month recurring. Cost: ₹500–1,000 once.</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-num p1">3</div>
+        <div class="action-body">
+          <div class="action-title">Create a WhatsApp broadcast list per branch today</div>
+          <div class="action-desc">Set up WhatsApp Business for each branch principal. Upload all parent numbers. Post 3 times a week: one child activity photo, one parenting tip, one branch update. Cost is zero and builds steady top-of-mind awareness in your locality within weeks.</div>
+          <span class="action-impact">2–4 new enquiries per week per branch — ₹0 cost</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-section">
+      <div class="phase-badge p2">Phase 2 — Days 31 to 90 — Fill the seats. Fix the cost structure.</div>
+      <div class="action-card">
+        <div class="action-num p2">4</div>
+        <div class="action-body">
+          <div class="action-title">Launch hyper-local digital admission campaigns</div>
+          <div class="action-desc">Spend ₹5,000/month per branch on Facebook and Instagram. Geo-target within 3km radius. Target mothers aged 22–35. Run a "Free trial day" offer. At your fee level, a single converted admission pays for two months of ads. This is the lowest-cost lead engine available to you.</div>
+          <span class="action-impact">₹5,000 ad spend → 3–5 new admissions → ₹9,000–15,000 recurring/month</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-num p2">5</div>
+        <div class="action-body">
+          <div class="action-title">Implement hub-and-spoke staffing model</div>
+          <div class="action-desc">Keep one core teacher and one helper at each branch as permanent staff. Hire 2–3 specialist teachers (music, art, phonics) as shared floating staff who rotate across branches. This reduces monthly salary costs by 15–25% while actually improving curriculum quality — specialists become a selling point.</div>
+          <span class="action-impact">Saves ₹20,000–40,000 / month across the network</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-num p2">6</div>
+        <div class="action-body">
+          <div class="action-title">Reprice with a 3-tier fee structure</div>
+          <div class="action-desc">Introduce: Basic ₹2,500 | Standard ₹3,500 | Premium ₹4,500 (includes activity kit and monthly progress report). Research consistently shows 60–70% of parents choose the middle or top tier. This lifts average revenue per student by ₹500–1,000 without losing enrollments.</div>
+          <span class="action-impact">+₹500–1,000 avg per student = +₹13,500–27,000 / branch / month</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-section">
+      <div class="phase-badge p3">Phase 3 — Month 3 to 6 — Build recurring revenue. Eliminate dry spells.</div>
+      <div class="action-card">
+        <div class="action-num p3">7</div>
+        <div class="action-body">
+          <div class="action-title">Launch an annual summer camp open to all neighbourhood children</div>
+          <div class="action-desc">Run a 4-week structured program in April–May with themes: art week, science week, performance week, sports week. Price at ₹3,500–5,000 per child. Open registration to non-enrolled children in the locality — this is your single biggest annual marketing event AND your best profit month.</div>
+          <span class="action-impact">20 kids × ₹4,000 × 8 branches = ₹6,40,000 in one month</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-num p3">8</div>
+        <div class="action-body">
+          <div class="action-title">Sell weekend hobby classes as a standalone product</div>
+          <div class="action-desc">Saturday art, dance, or phonics batches for children aged 2–7 — open to non-enrolled children in the locality. Charge ₹800–1,200/month for 4 Saturday sessions. Your space is idle on weekends. Run two batches of 10 children per branch.</div>
+          <span class="action-impact">2 batches × ₹10,000 × 8 branches = ₹1,60,000 / month additional</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-num p3">9</div>
+        <div class="action-body">
+          <div class="action-title">Introduce annual enrollment fee + branded activity kit</div>
+          <div class="action-desc">Charge a one-time ₹1,500–2,000 registration fee at the start of each academic year. Bundle a branded activity kit (costs ₹200 to assemble, perceived value ₹800+) that includes a colouring book, crayons, name tag, and school bag tag. This creates a healthy upfront cash injection every June–July.</div>
+          <span class="action-impact">27 students × ₹1,800 × 8 branches = ₹3,88,800 lump sum / year</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /main -->
+
+<footer>
+  Built for <span>your playschool network</span> · Business consulting diagnostic · 2025 · All figures are estimates based on disclosed parameters
+</footer>
+
+<script>
+// ── FORMATTING ──
+function inr(n) {
+  var abs = Math.abs(Math.round(n));
+  var s = '₹' + abs.toLocaleString('en-IN');
+  return n < 0 ? '-' + s : s;
+}
+function lakh(n) {
+  var abs = Math.abs(n);
+  if (abs >= 10000000) return (n < 0 ? '-' : '') + '₹' + (abs / 10000000).toFixed(2) + ' Cr';
+  if (abs >= 100000) return (n < 0 ? '-' : '') + '₹' + (abs / 100000).toFixed(1) + 'L';
+  return inr(n);
+}
+function pct(n) { return (n >= 0 ? '+' : '') + n.toFixed(1) + '%'; }
+
+// ── SLIDER FILL UPDATE ──
+function updateSliderFill(el) {
+  var min = +el.min, max = +el.max, val = +el.value;
+  var p = Math.round((val - min) / (max - min) * 100);
+  el.style.setProperty('--pct', p + '%');
+}
+document.querySelectorAll('input[type="range"]').forEach(function(el) {
+  updateSliderFill(el);
+  el.addEventListener('input', function() { updateSliderFill(this); });
+});
+
+function g(id) { return +document.getElementById(id).value; }
+function s(id, v, cls) {
+  var el = document.getElementById(id);
+  el.textContent = v;
+  if (cls !== undefined) {
+    el.className = el.className.replace(/\b(green|red|amber)\b/g, '') + (cls ? ' ' + cls : '');
+  }
+}
+
+// ── MAIN CALC ──
+function calc() {
+  var students = g('s-students'), fee = g('s-fee');
+  var dckids = g('s-dckids'), dcfee = g('s-dcfee');
+  var wkkids = g('s-wkkids'), wkfee = g('s-wkfee');
+  var branches = g('s-branches');
+  var rent = g('s-rent'), salary = g('s-salary');
+  var util = g('s-util'), supplies = g('s-supplies');
+  var mkt = g('s-mkt'), misc = g('s-misc');
+
+  // outputs
+  s('o-students', students);
+  s('o-fee', '₹' + fee.toLocaleString('en-IN'));
+  s('o-dckids', dckids);
+  s('o-dcfee', '₹' + dcfee.toLocaleString('en-IN'));
+  s('o-wkkids', wkkids);
+  s('o-wkfee', '₹' + wkfee.toLocaleString('en-IN'));
+  s('o-branches', branches);
+  s('o-rent', '₹' + rent.toLocaleString('en-IN'));
+  s('o-salary', '₹' + salary.toLocaleString('en-IN'));
+  s('o-util', '₹' + util.toLocaleString('en-IN'));
+  s('o-supplies', '₹' + supplies.toLocaleString('en-IN'));
+  s('o-mkt', '₹' + mkt.toLocaleString('en-IN'));
+  s('o-misc', '₹' + misc.toLocaleString('en-IN'));
+
+  var rSchool = students * fee;
+  var rDc = dckids * dcfee;
+  var rWk = wkkids * wkfee;
+  var totalRev = rSchool + rDc + rWk;
+  var totalExp = rent + salary + util + supplies + mkt + misc;
+  var profit = totalRev - totalExp;
+  var margin = totalRev > 0 ? (profit / totalRev * 100) : -100;
+  var beStudents = fee > 0 ? Math.ceil(totalExp / fee) : 0;
+  var cps = students > 0 ? Math.round(totalExp / students) : 0;
+
+  // progress bars
+  var maxR = Math.max(totalRev, 1);
+  document.getElementById('pb-school-val').textContent = inr(rSchool);
+  document.getElementById('pb-dc-val').textContent = inr(rDc);
+  document.getElementById('pb-wk-val').textContent = inr(rWk);
+  document.getElementById('pb-school').style.width = Math.round(rSchool / maxR * 100) + '%';
+  document.getElementById('pb-dc').style.width = Math.round(rDc / maxR * 100) + '%';
+  document.getElementById('pb-wk').style.width = Math.round(rWk / maxR * 100) + '%';
+
+  // KPI cards
+  s('m-rev', inr(totalRev), 'green');
+  s('m-exp', inr(totalExp), 'red');
+  s('m-profit', inr(profit), profit >= 0 ? 'green' : 'red');
+  s('m-margin', pct(margin), margin >= 0 ? 'green' : 'red');
+
+  // network
+  var netRev = totalRev * branches;
+  var netProfit = profit * branches;
+  document.getElementById('nb-rev').textContent = lakh(netRev);
+  var nbp = document.getElementById('nb-profit');
+  nbp.textContent = lakh(netProfit);
+  nbp.className = 'val ' + (netProfit >= 0 ? 'g' : 'r');
+  var nba = document.getElementById('nb-annual');
+  nba.textContent = lakh(netProfit * 12);
+  nba.className = 'val ' + (netProfit >= 0 ? 'g' : 'r');
+  s('nb-be', beStudents + ' students');
+
+  // insight
+  var ins = document.getElementById('insight-box');
+  if (profit > 50000) {
+    ins.className = 'insight green';
+    ins.textContent = 'Excellent performance! This branch is highly profitable at ' + pct(margin) + ' margin. Replicate this exact configuration across all branches to maximise network profit.';
+  } else if (profit > 15000) {
+    ins.className = 'insight blue';
+    ins.textContent = 'This branch is profitable and growing. Push margin above 40% by adding more daycare children or launching weekend batches — both use idle assets at near-zero cost.';
+  } else if (profit >= 0) {
+    ins.className = 'insight amber';
+    ins.textContent = 'Marginally profitable. Activate daycare and weekend classes immediately to boost margin without any new fixed costs. These are your fastest profit levers.';
+  } else {
+    ins.className = 'insight red';
+    ins.textContent = 'This branch is loss-making. Priority: (1) Launch daycare this week. (2) Reduce salary costs via hub-and-spoke staffing. (3) Fill seats through a referral program.';
+  }
+
+  // P&L tab
+  s('pl-school', inr(rSchool)); s('pl-dc', inr(rDc)); s('pl-wk', inr(rWk));
+  s('pl-gross', inr(totalRev));
+  s('pl-rent', '-' + inr(rent)); s('pl-salary', '-' + inr(salary));
+  s('pl-util', '-' + inr(util)); s('pl-supplies', '-' + inr(supplies));
+  s('pl-mkt', '-' + inr(mkt)); s('pl-misc', '-' + inr(misc));
+  s('pl-exp', '-' + inr(totalExp));
+  var plnet = document.getElementById('pl-net');
+  plnet.textContent = inr(profit);
+  plnet.style.color = profit >= 0 ? 'var(--teal-dark)' : 'var(--red)';
+  var plmarg = document.getElementById('pl-marg');
+  plmarg.textContent = pct(margin);
+  plmarg.style.color = margin >= 0 ? 'var(--teal-dark)' : 'var(--red)';
+  s('pl-be', beStudents);
+  s('pl-cps', inr(cps));
+  s('pl-ann-rev', inr(totalRev * 12));
+  var pap = document.getElementById('pl-ann-p');
+  pap.textContent = inr(profit * 12);
+  pap.style.color = profit >= 0 ? 'var(--teal-dark)' : 'var(--red)';
+  s('pl-net-rev', inr(totalRev * branches * 12));
+  var pnp = document.getElementById('pl-net-p');
+  pnp.textContent = inr(netProfit * 12);
+  pnp.style.color = netProfit >= 0 ? 'var(--teal-dark)' : 'var(--red)';
+  s('pl-need-s', Math.ceil((totalExp + 30000) / fee) + ' students');
+  s('pl-need-f', inr(Math.ceil((totalExp + 30000) / students)));
+  s('pl-need-d', Math.max(0, Math.ceil((totalExp + 30000 - rSchool - rWk) / dcfee)) + ' kids');
+
+  // header
+  document.getElementById('h-current-profit').textContent = lakh(netProfit * 12);
+
+  // update chart
+  if (window.simChartObj) {
+    window.simChartObj.data.datasets[0].data = [Math.round(totalRev)];
+    window.simChartObj.data.datasets[1].data = [Math.round(totalExp)];
+    window.simChartObj.data.datasets[2].data = [Math.round(profit)];
+    window.simChartObj.update();
+  }
+}
+
+// ── TAB SWITCHING ──
+function switchTab(id) {
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'scenarios' && !window.scenChartObj) initScenCharts();
+}
+
+// ── SIMULATOR CHART ──
+window.addEventListener('load', function() {
+  var ctx = document.getElementById('simChart').getContext('2d');
+  window.simChartObj = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Revenue', 'Expenses', 'Net profit'],
+      datasets: [
+        { label: 'Revenue', data: [81000], backgroundColor: '#0d9e74', borderRadius: 6 },
+        { label: 'Expenses', data: [82000], backgroundColor: '#e53e3e', borderRadius: 6 },
+        { label: 'Net profit', data: [-1000], backgroundColor: '#2563eb', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: function(v) { return '₹' + Math.round(v / 1000) + 'k'; }, color: '#6b7c74', font: { family: 'JetBrains Mono', size: 11 } }, grid: { color: 'rgba(220,232,226,0.8)' } },
+        x: { ticks: { color: '#6b7c74', font: { family: 'Sora', size: 12 } }, grid: { display: false } }
+      }
+    }
+  });
+  calc();
+});
+
+function initScenCharts() {
+  var ctx2 = document.getElementById('scenChart').getContext('2d');
+  window.scenChartObj = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['Now', '30 days', '90 days', '6 months'],
+      datasets: [
+        { label: 'Tuition', data: [81000, 105000, 112000, 157500], backgroundColor: '#0d9e74', borderRadius: 4 },
+        { label: 'Daycare', data: [0, 22500, 15000, 27000], backgroundColor: '#2563eb', borderRadius: 4 },
+        { label: 'Weekend', data: [0, 0, 6400, 12000], backgroundColor: '#d97706', borderRadius: 4 },
+        { label: 'Net profit', data: [-1000, 36500, 52400, 117000], backgroundColor: '#9333ea', borderRadius: 4, type: 'line', fill: false, borderColor: '#9333ea', borderWidth: 2, pointRadius: 5, pointBackgroundColor: '#9333ea' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#6b7c74', font: { family: 'Sora', size: 12 } }, grid: { display: false } },
+        y: { stacked: false, ticks: { callback: function(v) { return '₹' + Math.round(v / 1000) + 'k'; }, color: '#6b7c74', font: { family: 'JetBrains Mono', size: 11 } }, grid: { color: 'rgba(220,232,226,0.8)' } }
+      }
+    }
+  });
+
+  var ctx3 = document.getElementById('networkChart').getContext('2d');
+  window.networkChartObj = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: ['Now', 'Phase 1\n(30 days)', 'Phase 2\n(90 days)', 'Phase 3\n(6 months)'],
+      datasets: [
+        { label: 'Network revenue/month', data: [648000, 948000, 1219200, 1572000], backgroundColor: 'rgba(13,158,116,0.15)', borderColor: '#0d9e74', borderWidth: 2, borderRadius: 6 },
+        { label: 'Network profit/month', data: [-8000, 292000, 571200, 936000], backgroundColor: function(ctx) { var v = ctx.parsed.y; return v < 0 ? 'rgba(229,62,62,0.7)' : 'rgba(13,158,116,0.7)'; }, borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6b7c74', font: { family: 'Sora', size: 11 } }, grid: { display: false } },
+        y: { ticks: { callback: function(v) { return '₹' + Math.round(v / 100000).toFixed(1) + 'L'; }, color: '#6b7c74', font: { family: 'JetBrains Mono', size: 11 } }, grid: { color: 'rgba(220,232,226,0.8)' } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
